@@ -32,17 +32,18 @@ for meeting in recordings_json['meetings']:
         if recording['file_size'] == 0:
             print(f"IGNORE-SIZE-0: {del_url}")
             continue
-        if recording['file_size'] < 1024000:
+        if recording['file_size'] < 1024*1000*10: # 10MB
             print(f"DELETE-SIZE: {del_url} size={recording['file_size']}")
             requests.delete(del_url, headers=headers)
             continue
         try:
             dt = datetime.datetime.strptime(recording['recording_start'], "%Y-%m-%dT%H:%M:%SZ")
-            title = f"{dt.strftime('%A')} {dt.day} {dt.strftime('%b')}, {dt.strftime('%H_%M_%S')}"
+            dt = dt + datetime.timedelta(hours=1)
+            title = f"{dt.strftime('%A')} {dt.day} {dt.strftime('%b')}, {dt.strftime('%H_%M_%S_BST')}"
         except:
             title = recording['recording_start']
         print(f"DOWNLOAD:  {recording['recording_start']} {recording['download_url']}")
-        local_filename, headers_download = urllib.request.urlretrieve(f"{recording['download_url']}?access_token={config['zoom']['jwt']['access_token']}", filename='/tmp/zoomeo')
+        urllib.request.urlretrieve(f"{recording['download_url']}?access_token={config['zoom']['jwt']['access_token']}", filename='/tmp/zoomeo')
         if not v:
             v = vimeo.VimeoClient(
                 token=config['vimeo']['oauth']['token'],
