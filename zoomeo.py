@@ -26,7 +26,24 @@ recordings_json = json.loads(r.content.decode('utf-8', 'ignore'))
 
 v = None
 
+def dl_hook(blocks_transferred, block_size, total_size):
+    global gperc, dots, enters
+    perc = int(blocks_transferred*block_size*100/total_size)
+    if blocks_transferred == block_size or perc > gperc:
+        sys.stdout.write('.')
+        sys.stdout.flush()
+        dots += 1
+        gperc = perc
+    if blocks_transferred*block_size == total_size or (int(gperc/25) > enters):
+        print()
+        if gperc <= 75:
+            sys.stdout.write(' ' * 12)
+        enters += 1
+
 for meeting in recordings_json['meetings']:
+    gperc = 0
+    dots = 0
+    enters = 0
     for recording in meeting['recording_files']:
         del_url = f"https://api.zoom.us/v2/meetings/{recording['meeting_id']}/recordings/{recording['id']}?action=trash"
         if recording['file_size'] == 0:
@@ -39,11 +56,12 @@ for meeting in recordings_json['meetings']:
         try:
             dt = datetime.datetime.strptime(recording['recording_start'], "%Y-%m-%dT%H:%M:%SZ")
             dt = dt + datetime.timedelta(hours=1)
-            title = f"{dt.strftime('%A')} {dt.day} {dt.strftime('%b')}, {dt.strftime('%H_%M_%S_BST')}"
+            title = f"{dt.strftime('%A')} {dt.day} {dt.strftime('%b')}, {dt.strftime('%I_%M_%p_BST')}"
         except:
             title = recording['recording_start']
-        print(f"DOWNLOAD:  {recording['recording_start']} {recording['download_url']}")
-        urllib.request.urlretrieve(f"{recording['download_url']}?access_token={config['zoom']['jwt']['access_token']}", filename='/tmp/zoomeo')
+        print(f"DOWNLOAD:  {int(recording['file_size']/1024/1024)}MB {recording['recording_start']} {recording['download_url']}")
+        sys.stdout.write(' ' * 12)
+        urllib.request.urlretrieve(f"{recording['download_url']}?access_token={config['zoom']['jwt']['access_token']}", filename='/tmp/zoomeo', reporthook=dl_hook)
         if not v:
             v = vimeo.VimeoClient(
                 token=config['vimeo']['oauth']['token'],
